@@ -46,26 +46,21 @@ def check_hashes(password, hashed_text):
     return make_hashes(password) == hashed_text
 
 def get_connection():
-    """Estabelece conexão com o banco - Adaptado para servidor"""
+    """Estabelece conexão com SQLite - Versão para Streamlit Sharing"""
     try:
-        if IS_RENDER and DB_CONFIG['type'] == 'postgresql':
-            import psycopg2
-            from urllib.parse import urlparse
-            
-            url = urlparse(DB_CONFIG['url'])
-            conn = psycopg2.connect(
-                database=url.path[1:],
-                user=url.username,
-                password=url.password,
-                host=url.hostname,
-                port=url.port,
-                sslmode='require'
-            )
-            return conn
+        # No Streamlit Sharing, precisamos usar path absoluto
+        import os
+        if os.path.exists('/tmp/fardamentos.db'):
+            # Já existe no sistema temporário
+            conn = sqlite3.connect('/tmp/fardamentos.db', check_same_thread=False)
         else:
-            conn = sqlite3.connect(DB_CONFIG['url'], check_same_thread=False)
-            conn.row_factory = sqlite3.Row
-            return conn
+            # Primeira execução - criar banco
+            conn = sqlite3.connect('/tmp/fardamentos.db', check_same_thread=False)
+            init_db()  # Inicializar tabelas
+        
+        conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA foreign_keys = ON")
+        return conn
     except Exception as e:
         st.error(f"Erro de conexão com o banco: {str(e)}")
         return None
